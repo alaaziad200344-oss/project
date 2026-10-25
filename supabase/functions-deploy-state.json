@@ -4,6 +4,10 @@
     "ai-agent": {
       "hasChanged": false,
       "hash": "307b4d11e564b72a7a9dc84afddfd3f5c6e4516d49eafea908da304517cc0316"
+    },
+    "services-api": {
+      "hasChanged": false,
+      "hash": "5e65aa459c1e46f6bb30029135004c010c09ce05cdae007b40f5ac803a8e9244"
     }
   }
 }
