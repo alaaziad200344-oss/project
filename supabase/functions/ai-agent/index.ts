@@ -12,6 +12,8 @@ interface AiPayload {
   data?: Record<string, unknown>;
 }
 
+type AiData = Record<string, unknown>;
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -26,7 +28,7 @@ Deno.serve(async (req: Request) => {
 
     const body = (await req.json()) as AiPayload;
     const action = (body.action || "").toLowerCase();
-    const data = (body.data || {}) as Record<string, any>;
+    const data = (body.data || {}) as AiData;
 
     let result: Record<string, unknown> = {};
     let status: "success" | "error" = "success";
@@ -108,12 +110,13 @@ Deno.serve(async (req: Request) => {
         } else {
           let servicesLinked: string[] = [];
           if (Array.isArray(data.service_ids) && data.service_ids.length) {
-            const rows = data.service_ids.map((sid: string) => ({
-              appointment_id: (appt as any).id,
+            const apptId = (appt as { id: string }).id;
+            const rows = (data.service_ids as string[]).map((sid) => ({
+              appointment_id: apptId,
               service_id: sid,
             }));
             await supabase.from("appointment_services").insert(rows);
-            servicesLinked = data.service_ids;
+            servicesLinked = data.service_ids as string[];
           }
           result = { appointment: appt, services_linked: servicesLinked };
           message = "Appointment booked";
@@ -187,17 +190,52 @@ Deno.serve(async (req: Request) => {
       }
 
       case "list_services": {
-        const { data: services, error } = await supabase
+        let q = supabase
           .from("services")
           .select("id, name, description, price, duration_minutes, active")
-          .eq("active", true)
           .order("name", { ascending: true });
+        if (!data.include_inactive) q = q.eq("active", true);
+        if (data.search) q = q.ilike("name", `%${data.search}%`);
+        const { data: services, error } = await q.limit(data.limit ? Number(data.limit) : 1000);
         if (error) {
           status = "error";
           message = error.message;
         } else {
-          result = { services };
-          message = `${services?.length || 0} service(s)`;
+          const rows = (services || []) as Array<{
+            id: string;
+            name: string;
+            description: string | null;
+            price: number;
+            duration_minutes: number;
+            active: boolean;
+          }>;
+          if (data.format === "csv") {
+            const header = "id,name,description,price,duration_minutes,active";
+            const body = rows
+              .map((r) =>
+                [
+                  r.id,
+                  `"${(r.name || "").replace(/"/g, '""')}"`,
+                  `"${(r.description || "").replace(/"/g, '""')}"`,
+                  r.price,
+                  r.duration_minutes,
+                  r.active ? "true" : "false",
+                ].join(",")
+              )
+              .join("\n");
+            result = { csv: header + "\n" + body, count: rows.length };
+            message = `${rows.length} service(s) as CSV`;
+          } else if (data.format === "table") {
+            result = {
+              columns: ["id", "name", "description", "price", "duration_minutes", "active"],
+              rows,
+              count: rows.length,
+            };
+            message = `${rows.length} service(s) as table`;
+          } else {
+            result = { services: rows, count: rows.length };
+            message = `${rows.length} service(s)`;
+          }
         }
         break;
       }
@@ -277,7 +315,7 @@ Deno.serve(async (req: Request) => {
 
       default:
         status = "error";
-        message = `Unknown action: ${action}. Supported: register_patient, find_patient, book_appointment, confirm_appointment, cancel_appointment, list_appointments, list_services, list_doctors, record_visit, patient_history`;
+        message = `Unknown action: ${action}. Supported: register_patient, find_patient, book_appointment, confirm_appointment, cancel_appointment, list_appointments, list_services (supports format=csv|table, include_inactive, search), list_doctors, record_visit, patient_history`;
     }
 
     await supabase.from("ai_logs").insert({

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Search, Pencil, Trash2, FileText, Bot, Phone } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, FileText, Bot } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Patient, Visit, Appointment } from "@/lib/types";
 import { Modal } from "@/components/Modal";
@@ -9,7 +9,18 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { sendToN8N } from "@/lib/settings";
 
-const empty: Omit<Patient, "id" | "created_at" | "updated_at"> = {
+type PatientForm = {
+  name: string;
+  phone: string;
+  email: string;
+  gender: Patient["gender"];
+  birth_date: string;
+  address: string;
+  medical_history: string;
+  notes: string;
+};
+
+const empty: PatientForm = {
   name: "",
   phone: "",
   email: "",

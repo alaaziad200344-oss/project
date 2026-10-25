@@ -1,30 +1,35 @@
 import { useEffect, useState } from "react";
-import { Save, Bot, Webhook, Building2, History, Eye, EyeOff } from "lucide-react";
+import { Save, Bot, Webhook, Building2, History, Eye, EyeOff, Send, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Setting, AiLog } from "@/lib/types";
 import { formatDateTime } from "@/lib/format";
+import { sendToN8N, type SettingKey } from "@/lib/settings";
 import { EmptyState } from "@/components/EmptyState";
 
-const WEBHOOK_FIELDS: { key: string; label: string; desc: string }[] = [
+const WEBHOOK_FIELDS: { key: SettingKey; label: string; desc: string; testPayload: Record<string, unknown> }[] = [
   {
     key: "n8n_register_patient",
     label: "تسجيل ملف المريض",
     desc: "يُستدعى عند إنشاء ملف مريض جديد",
+    testPayload: { test: true, name: "اختبار", phone: "0000000000" },
   },
   {
     key: "n8n_book_appointment",
     label: "حجز موعد",
     desc: "يُستدعى عند حجز موعد جديد",
+    testPayload: { test: true, appointment_date: new Date().toISOString(), service_ids: [] },
   },
   {
     key: "n8n_confirm_appointment",
     label: "تأكيد موعد",
     desc: "يُستدعى عند تأكيد موعد أو إكماله",
+    testPayload: { test: true, appointment_id: "test", status: "confirmed" },
   },
   {
     key: "n8n_cancel_appointment",
     label: "إلغاء موعد",
     desc: "يُستدعى عند إلغاء موعد",
+    testPayload: { test: true, appointment_id: "test", status: "cancelled" },
   },
 ];
 
@@ -35,6 +40,8 @@ export function Settings() {
   const [logs, setLogs] = useState<AiLog[]>([]);
   const [showSecrets, setShowSecrets] = useState(false);
   const [tab, setTab] = useState<"webhooks" | "clinic" | "logs">("webhooks");
+  const [testingKey, setTestingKey] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<Record<string, { ok: boolean; message: string }>>({});
 
   useEffect(() => {
     load();
@@ -45,12 +52,7 @@ export function Settings() {
     const map: Record<string, string> = {};
     (data as Setting[]).forEach((s) => (map[s.key] = s.value));
     setValues(map);
-    const { data: logsData } = await supabase
-      .from("ai_logs")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(50);
-    setLogs((logsData as AiLog[]) || []);
+    await loadLogs();
   }
 
   async function save() {
@@ -64,6 +66,28 @@ export function Settings() {
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  }
+
+  async function testWebhook(field: { key: SettingKey; testPayload: Record<string, unknown> }) {
+    if (!values[field.key]) {
+      setTestResult((r) => ({ ...r, [field.key]: { ok: false, message: "أدخل رابط الـ webhook أولاً" } }));
+      return;
+    }
+    setTestingKey(field.key);
+    setTestResult((r) => ({ ...r, [field.key]: { ok: false, message: "" } }));
+    const res = await sendToN8N(field.key, { ...field.testPayload, source: "settings_test" });
+    setTestResult((r) => ({ ...r, [field.key]: { ok: res.ok, message: res.ok ? "تم الإرسال بنجاح" : res.message || "فشل الإرسال" } }));
+    setTestingKey(null);
+    await loadLogs();
+  }
+
+  async function loadLogs() {
+    const { data: logsData } = await supabase
+      .from("ai_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    setLogs((logsData as AiLog[]) || []);
   }
 
   return (
@@ -112,16 +136,39 @@ export function Settings() {
           <div className="space-y-4">
             {WEBHOOK_FIELDS.map((f) => (
               <div key={f.key}>
-                <label className="label">{f.label}</label>
+                <div className="flex items-center justify-between">
+                  <label className="label">{f.label}</label>
+                  <button
+                    onClick={() => testWebhook(f)}
+                    disabled={testingKey === f.key}
+                    className="btn-ghost text-xs py-1 px-2"
+                  >
+                    {testingKey === f.key ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                    اختبار
+                  </button>
+                </div>
                 <input
                   type={showSecrets ? "text" : "password"}
                   value={values[f.key] || ""}
-                  onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
+                  onChange={(e) => {
+                    setValues({ ...values, [f.key]: e.target.value });
+                    setTestResult((r) => ({ ...r, [f.key]: { ok: false, message: "" } }));
+                  }}
                   placeholder="https://n8n.example.com/webhook/..."
                   className="input"
                   dir="ltr"
                 />
                 <p className="text-xs text-slate-400 mt-1">{f.desc}</p>
+                {testResult[f.key]?.message && (
+                  <p
+                    className={`text-xs mt-1.5 flex items-center gap-1 ${
+                      testResult[f.key].ok ? "text-emerald-600" : "text-rose-600"
+                    }`}
+                  >
+                    {testResult[f.key].ok ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                    {testResult[f.key].message}
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -173,7 +220,12 @@ export function Settings() {
 
       {tab === "logs" && (
         <div className="card p-6">
-          <h2 className="font-bold text-slate-700 mb-4">آخر عمليات الذكاء الاصطناعي</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold text-slate-700">آخر عمليات الذكاء الاصطناعي</h2>
+            <button onClick={loadLogs} className="btn-ghost text-sm">
+              <History size={16} /> تحديث
+            </button>
+          </div>
           {logs.length === 0 ? (
             <EmptyState title="لا يوجد سجل" subtitle="ستظهر عمليات الـ webhook هنا" icon={<History size={28} />} />
           ) : (

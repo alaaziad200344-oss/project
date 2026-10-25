@@ -11,6 +11,7 @@ const SETTING_KEYS = [
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];
+export { SETTING_KEYS };
 
 export async function getSettings(): Promise<Record<string, string>> {
   const { data, error } = await supabase.from("settings").select("key, value");
@@ -42,14 +43,30 @@ export async function sendToN8N(
   const url = (data as { value: string } | null)?.value?.trim();
   if (!url) return { ok: false, message: "لم يتم ضبط رابط الـ webhook لهذه العملية" };
 
+  let ok = false;
+  let status: number | undefined;
+  let message = "";
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    return { ok: res.ok, status: res.status, message: res.ok ? "تم الإرسال" : `HTTP ${res.status}` };
+    ok = res.ok;
+    status = res.status;
+    message = res.ok ? "تم الإرسال" : `HTTP ${res.status}`;
   } catch (e) {
-    return { ok: false, message: (e as Error).message };
+    ok = false;
+    message = (e as Error).message;
   }
+
+  await supabase.from("ai_logs").insert({
+    action: webhookKey,
+    payload: { webhook_url: url, ...payload },
+    result: ok ? { http_status: status } : null,
+    status: ok ? "success" : "error",
+    message,
+  });
+
+  return { ok, status, message };
 }

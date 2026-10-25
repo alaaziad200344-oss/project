@@ -76,7 +76,7 @@ export function Dashboard() {
       visitsThisMonth: visits.length,
       revenueThisMonth: visits.reduce((s, v) => s + (v.cost || 0), 0),
     });
-    setRecent((apptRes.data as Appointment[]) || []);
+    setRecent((apptRes.data as unknown as Appointment[]) || []);
     setLoading(false);
   }
 

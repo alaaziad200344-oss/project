@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Plus, CalendarDays, Check, X, Bot, Filter } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import type { Appointment, Doctor, Patient, Service, AppointmentService } from "@/lib/types";
+import type { Appointment, Doctor, Patient, Service } from "@/lib/types";
 import { Modal } from "@/components/Modal";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
-import { formatDateTime, formatMoney, toLocalInput } from "@/lib/format";
-import { sendToN8N } from "@/lib/settings";
+import { formatDateTime, formatMoney } from "@/lib/format";
+import { sendToN8N, type SettingKey } from "@/lib/settings";
 
 export function Appointments() {
   const [appts, setAppts] = useState<Appointment[]>([]);
@@ -114,7 +114,7 @@ export function Appointments() {
     setTimeout(() => setAiMsg(null), 5000);
   }
 
-  async function setStatus(a: Appointment, status: Appointment["status"], webhook: string) {
+  async function setStatus(a: Appointment, status: Appointment["status"], webhook: SettingKey) {
     await supabase.from("appointments").update({ status }).eq("id", a.id);
     const r = await sendToN8N(webhook, {
       appointment_id: a.id,
