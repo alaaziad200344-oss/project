@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Save, Bot, Webhook, Building2, History, Eye, EyeOff, Send, CheckCircle2, AlertCircle, Loader2, KeyRound, Copy, Table } from "lucide-react";
+import { Save, Bot, Webhook, Building2, History, Eye, EyeOff, Send, CheckCircle2, AlertCircle, Loader2, KeyRound, Copy, Table, CalendarPlus, CalendarCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Setting, AiLog } from "@/lib/types";
 import { formatDateTime } from "@/lib/format";
@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/EmptyState";
 
 const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, "");
 const SERVICES_API_BASE = `${SUPABASE_URL}/functions/v1/services-api`;
+const BOOK_APPOINTMENT_URL = `${SUPABASE_URL}/functions/v1/book-appointment`;
+const CHECK_AVAILABILITY_URL = `${SUPABASE_URL}/functions/v1/check-availability`;
 
 const TEST_ACTIONS: { action: WebhookAction; label: string; desc: string; testPayload: Record<string, unknown> }[] = [
   {
@@ -268,6 +270,139 @@ export function Settings() {
                 GET {SERVICES_API_BASE}
                 <br />
                 (لا حاجة لأي Authorization header — يرجع JSON Array مباشرة)
+              </code>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-5 border-t border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarPlus size={16} className="text-violet-600" />
+              <h3 className="font-semibold text-slate-700 text-sm">تسجيل مريض وحجز موعد — API</h3>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">
+              API واحد يسجّل مريض جديد (وباختيار) يحجز له موعد في نفس الوقت. POST بـ JSON.
+            </p>
+
+            <div className="space-y-2.5">
+              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/50">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                    <span className="text-violet-600"><CalendarPlus size={14} /></span>
+                    رابط تسجيل + حجز
+                  </span>
+                  <button
+                    onClick={() => copyToClipboard(BOOK_APPOINTMENT_URL, "book")}
+                    className="btn-ghost text-xs py-1 px-2"
+                  >
+                    {copied === "book" ? (
+                      <CheckCircle2 size={14} className="text-emerald-600" />
+                    ) : (
+                      <Copy size={14} />
+                    )}
+                    {copied === "book" ? "تم النسخ" : "نسخ الرابط"}
+                  </button>
+                </div>
+                <code className="block text-xs text-slate-600 bg-white rounded-lg p-2 break-all dir-ltr" dir="ltr">
+                  POST {BOOK_APPOINTMENT_URL}
+                </code>
+                <p className="text-xs text-slate-400 mt-1">Body مثال:</p>
+                <code className="block text-xs text-slate-600 bg-white rounded-lg p-2 mt-1 dir-ltr" dir="ltr">
+{`{
+  "patient_name": "محمد أحمد",
+  "patient_phone": "0501234567",
+  "gender": "male",
+  "birth_date": "1990-05-10",
+  "appointment_date": "2026-10-30T10:00:00Z",
+  "doctor_id": "<uuid اختياري>",
+  "service_ids": ["<uuid>"],
+  "notes": "اختياري"
+}`}
+                </code>
+                <p className="text-xs text-slate-400 mt-1">
+                  لو بعت <code>appointment_date</code> بس، بيحجز موعد. لو بعت بيانات المريض بس، يسجّله من غير موعد.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-5 border-t border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarCheck size={16} className="text-teal-600" />
+              <h3 className="font-semibold text-slate-700 text-sm">الاستعلام عن المواعيد المتاحة — API</h3>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">
+              GET بيرجّع المواعيد الفاضية في يوم معيّن، أو مواعيد مريض معيّن عبر رقم تليفونه.
+            </p>
+
+            <div className="space-y-2.5">
+              {[
+                {
+                  id: "slots-today",
+                  icon: <CalendarCheck size={14} />,
+                  label: "المواعيد الفاضية النهاردة",
+                  url: CHECK_AVAILABILITY_URL,
+                  hint: "كل السلات الفاضية من 9 ص لـ 6 م (30 دقيقة لكل سلة)",
+                },
+                {
+                  id: "slots-date",
+                  icon: <CalendarCheck size={14} />,
+                  label: "موعد يوم محدّد",
+                  url: `${CHECK_AVAILABILITY_URL}?date=2026-10-30`,
+                  hint: "غيّر التاريخ YYYY-MM-DD",
+                },
+                {
+                  id: "slots-doctor",
+                  icon: <CalendarCheck size={14} />,
+                  label: "موعد طبيب محدّد",
+                  url: `${CHECK_AVAILABILITY_URL}?doctor_id=<uuid>&date=2026-10-30`,
+                  hint: "فلترة السلات بطبيب معيّن",
+                },
+                {
+                  id: "my-appts",
+                  icon: <CalendarCheck size={14} />,
+                  label: "مواعيد مريض (بالرقم)",
+                  url: `${CHECK_AVAILABILITY_URL}?action=my_appointments&phone=0501234567`,
+                  hint: "كل مواعيد مريض عبر رقم تليفونه",
+                },
+              ].map((item) => (
+                <div key={item.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50/50">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                      <span className="text-teal-600">{item.icon}</span>
+                      {item.label}
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(item.url, item.id)}
+                      className="btn-ghost text-xs py-1 px-2"
+                    >
+                      {copied === item.id ? (
+                        <CheckCircle2 size={14} className="text-emerald-600" />
+                      ) : (
+                        <Copy size={14} />
+                      )}
+                      {copied === item.id ? "تم النسخ" : "نسخ الرابط"}
+                    </button>
+                  </div>
+                  <code className="block text-xs text-slate-600 bg-white rounded-lg p-2 break-all dir-ltr" dir="ltr">
+                    {item.url}
+                  </code>
+                  <p className="text-xs text-slate-400 mt-1">{item.hint}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 p-3 bg-teal-50 rounded-xl text-xs text-slate-600">
+              <p className="font-semibold text-teal-700 mb-1">إجابة الـ API (available_slots):</p>
+              <code className="block bg-white rounded-lg p-2 mt-1 dir-ltr" dir="ltr">
+{`{
+  "ok": true,
+  "date": "2026-10-30",
+  "slot_minutes": 30,
+  "clinic_hours": "9:00-18:00",
+  "available_slots": ["2026-10-30T09:00:00Z", ...],
+  "count": 18,
+  "doctors": [{"id":"...","name":"د. أحمد العلي","specialty":"تقويم"}]
+}`}
               </code>
             </div>
           </div>

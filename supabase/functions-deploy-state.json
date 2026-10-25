@@ -8,6 +8,14 @@
     "services-api": {
       "hasChanged": false,
       "hash": "72df663582290a4e68156e6df5b319dacf2ee710a0e17323ac7e7e0cb63911bf"
+    },
+    "book-appointment": {
+      "hasChanged": false,
+      "hash": "5a1a2502ecc37d9775da8f40ac227d4717be0303a284c1912c915d670bcb3f34"
+    },
+    "check-availability": {
+      "hasChanged": false,
+      "hash": "e3a0c0446185590cb901cb8944cce2fd116da1f028b982e59ecd89c5d7cc9977"
     }
   }
 }
