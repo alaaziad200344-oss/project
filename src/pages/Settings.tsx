@@ -203,9 +203,7 @@ export function Settings() {
               <h3 className="font-semibold text-slate-700 text-sm">روابط الـ API — لسحب الخدمات إلى n8n</h3>
             </div>
             <p className="text-xs text-slate-500 mb-3">
-              استخدم أي رابط من اللي تحت في n8n لسحب الخدمات على شكل جدول. الطلبات لازم تحتوي ترويسة
-              <code className="text-violet-600 mx-1">Authorization: Bearer &lt;المفتاح&gt;</code>
-              بنفس المفتاح اللي فوق.
+              استخدم أي رابط من اللي تحت في n8n لسحب الخدمات على شكل جدول. الروابط دي عامة (Public) — مفيش حاجة لمفتاح أو Authorization.
             </p>
 
             <div className="space-y-2.5">
@@ -269,7 +267,7 @@ export function Settings() {
               <code className="block bg-white rounded-lg p-2 mt-1 dir-ltr" dir="ltr">
                 GET {SERVICES_API_BASE}?format=csv
                 <br />
-                Header: Authorization: Bearer &lt;المفتاح&gt;
+                (لا حاجة لأي Authorization header)
               </code>
             </div>
           </div>
