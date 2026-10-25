@@ -25,9 +25,7 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false },
     });
 
-    // Parse query params: ?format=csv|json|table&include_inactive=true&search=...
     const url = new URL(req.url);
-    const format = (url.searchParams.get("format") || "json").toLowerCase();
     const includeInactive = url.searchParams.get("include_inactive") === "true";
     const search = url.searchParams.get("search")?.trim() || "";
 
@@ -59,51 +57,25 @@ Deno.serve(async (req: Request) => {
     // Log the call for auditability
     await supabase.from("ai_logs").insert({
       action: "list_services_api",
-      payload: { format, include_inactive: includeInactive, search },
+      payload: { include_inactive: includeInactive, search },
       result: { count: rows.length },
       status: "success",
-      message: `${rows.length} service(s) returned as ${format}`,
+      message: `${rows.length} service(s) returned`,
     });
 
-    if (format === "csv") {
-      const header = "id,name,description,price,duration_minutes,active,created_at";
-      const body = rows
-        .map((r) =>
-          [
-            r.id,
-            `"${(r.name || "").replace(/"/g, '""')}"`,
-            `"${(r.description || "").replace(/"/g, '""')}"`,
-            r.price,
-            r.duration_minutes,
-            r.active ? "true" : "false",
-            r.created_at,
-          ].join(",")
-        )
-        .join("\n");
-      return new Response(header + "\n" + body, {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": 'attachment; filename="services.csv"',
-        },
-      });
-    }
-
-    if (format === "table") {
-      return new Response(
-        JSON.stringify({
-          ok: true,
-          columns: ["id", "name", "description", "price", "duration_minutes", "active", "created_at"],
-          rows,
-          count: rows.length,
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
+    // Always return a clean JSON array of rows, ready to use as a table in n8n.
     return new Response(
-      JSON.stringify({ ok: true, services: rows, count: rows.length }),
+      JSON.stringify(
+        rows.map((r) => ({
+          id: r.id,
+          name: r.name,
+          description: r.description,
+          price: Number(r.price),
+          duration_minutes: r.duration_minutes,
+          active: r.active,
+          created_at: r.created_at,
+        }))
+      ),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

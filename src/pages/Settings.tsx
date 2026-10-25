@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Save, Bot, Webhook, Building2, History, Eye, EyeOff, Send, CheckCircle2, AlertCircle, Loader2, KeyRound, Copy, Table, FileSpreadsheet } from "lucide-react";
+import { Save, Bot, Webhook, Building2, History, Eye, EyeOff, Send, CheckCircle2, AlertCircle, Loader2, KeyRound, Copy, Table } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Setting, AiLog } from "@/lib/types";
 import { formatDateTime } from "@/lib/format";
@@ -209,25 +209,25 @@ export function Settings() {
             <div className="space-y-2.5">
               {[
                 {
-                  id: "csv",
-                  icon: <FileSpreadsheet size={14} />,
-                  label: "CSV (جدول مثل جوجل شيت — يُنزّل ملف)",
-                  url: `${SERVICES_API_BASE}?format=csv`,
-                  hint: "ينزّل ملف CSV جاهز لإكسل/جوجل شيت",
-                },
-                {
-                  id: "table",
+                  id: "default",
                   icon: <Table size={14} />,
-                  label: "Table (JSON بأعمدة وصفوف)",
-                  url: `${SERVICES_API_BASE}?format=table`,
-                  hint: "مناسب لعقدة HTTP في n8n",
+                  label: "JSON Array (افتراضي)",
+                  url: SERVICES_API_BASE,
+                  hint: "مصفوفة JSON جاهزة كجدول مباشرة في n8n",
                 },
                 {
-                  id: "json",
-                  icon: <Bot size={14} />,
-                  label: "JSON (افتراضي)",
-                  url: `${SERVICES_API_BASE}`,
-                  hint: "كل الخدمات كمصفوفة services",
+                  id: "search",
+                  icon: <Table size={14} />,
+                  label: "بحث في الخدمات",
+                  url: `${SERVICES_API_BASE}?search=تنظيف`,
+                  hint: "فلترة الخدمات بالاسم — غيّر كلمة البحث",
+                },
+                {
+                  id: "all",
+                  icon: <Table size={14} />,
+                  label: "كل الخدمات (حتى غير المفعّلة)",
+                  url: `${SERVICES_API_BASE}?include_inactive=true`,
+                  hint: "يشمل الخدمات غير المفعّلة كمان",
                 },
               ].map((item) => (
                 <div
@@ -265,9 +265,9 @@ export function Settings() {
             <div className="mt-3 p-3 bg-teal-50 rounded-xl text-xs text-slate-600">
               <p className="font-semibold text-teal-700 mb-1">مثال سريع في n8n:</p>
               <code className="block bg-white rounded-lg p-2 mt-1 dir-ltr" dir="ltr">
-                GET {SERVICES_API_BASE}?format=csv
+                GET {SERVICES_API_BASE}
                 <br />
-                (لا حاجة لأي Authorization header)
+                (لا حاجة لأي Authorization header — يرجع JSON Array مباشرة)
               </code>
             </div>
           </div>
