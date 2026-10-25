@@ -103,7 +103,7 @@ export function Patients() {
         .single();
       const newPatient = data as Patient | null;
       if (newPatient) {
-        const r = await sendToN8N("n8n_register_patient", {
+        const r = await sendToN8N("register_patient", {
           patient_id: newPatient.id,
           name: newPatient.name,
           phone: newPatient.phone,

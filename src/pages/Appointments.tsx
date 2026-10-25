@@ -6,7 +6,7 @@ import { Modal } from "@/components/Modal";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/EmptyState";
 import { formatDateTime, formatMoney } from "@/lib/format";
-import { sendToN8N, type SettingKey } from "@/lib/settings";
+import { sendToN8N } from "@/lib/settings";
 
 export function Appointments() {
   const [appts, setAppts] = useState<Appointment[]>([]);
@@ -93,7 +93,7 @@ export function Appointments() {
       }));
       await supabase.from("appointment_services").insert(rows);
     }
-    const r = await sendToN8N("n8n_book_appointment", {
+    const r = await sendToN8N("book_appointment", {
       appointment_id: newAppt?.id,
       patient_id: form.patient_id,
       doctor_id: form.doctor_id || null,
@@ -114,9 +114,9 @@ export function Appointments() {
     setTimeout(() => setAiMsg(null), 5000);
   }
 
-  async function setStatus(a: Appointment, status: Appointment["status"], webhook: SettingKey) {
+  async function setStatus(a: Appointment, status: Appointment["status"], action: "confirm_appointment" | "cancel_appointment") {
     await supabase.from("appointments").update({ status }).eq("id", a.id);
-    const r = await sendToN8N(webhook, {
+    const r = await sendToN8N(action, {
       appointment_id: a.id,
       patient_id: a.patient_id,
       doctor_id: a.doctor_id,
@@ -227,13 +227,13 @@ export function Appointments() {
               {a.status === "pending" && (
                 <div className="flex gap-2 mt-4">
                   <button
-                    onClick={() => setStatus(a, "confirmed", "n8n_confirm_appointment")}
+                    onClick={() => setStatus(a, "confirmed", "confirm_appointment")}
                     className="btn-primary flex-1 py-2"
                   >
                     <Check size={16} /> تأكيد
                   </button>
                   <button
-                    onClick={() => setStatus(a, "cancelled", "n8n_cancel_appointment")}
+                    onClick={() => setStatus(a, "cancelled", "cancel_appointment")}
                     className="btn-danger flex-1 py-2"
                   >
                     <X size={16} /> إلغاء
@@ -242,7 +242,7 @@ export function Appointments() {
               )}
               {a.status === "confirmed" && (
                 <button
-                  onClick={() => setStatus(a, "completed", "n8n_confirm_appointment")}
+                  onClick={() => setStatus(a, "completed", "confirm_appointment")}
                   className="btn-secondary w-full mt-4 py-2"
                 >
                   <Check size={16} /> إكمال

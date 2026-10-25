@@ -26,6 +26,28 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false },
     });
 
+    // Verify the API key from settings against the request's Authorization header.
+    const authHeader = req.headers.get("Authorization") || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+    const { data: keyRow } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "n8n_api_key")
+      .maybeSingle();
+    const expectedKey = (keyRow as { value: string } | null)?.value?.trim() || "";
+    if (!expectedKey || token !== expectedKey) {
+      await supabase.from("ai_logs").insert({
+        action: "auth_failed",
+        payload: { has_token: Boolean(token) },
+        status: "error",
+        message: "Invalid or missing API key",
+      });
+      return new Response(
+        JSON.stringify({ ok: false, status: "error", message: "Unauthorized: invalid or missing API key", result: null }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const body = (await req.json()) as AiPayload;
     const action = (body.action || "").toLowerCase();
     const data = (body.data || {}) as AiData;
