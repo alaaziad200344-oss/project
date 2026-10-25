@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
-import { Save, Bot, Webhook, Building2, History, Eye, EyeOff, Send, CheckCircle2, AlertCircle, Loader2, KeyRound } from "lucide-react";
+import { Save, Bot, Webhook, Building2, History, Eye, EyeOff, Send, CheckCircle2, AlertCircle, Loader2, KeyRound, Copy, Table, FileSpreadsheet } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Setting, AiLog } from "@/lib/types";
 import { formatDateTime } from "@/lib/format";
 import { sendToN8N, type WebhookAction } from "@/lib/settings";
 import { EmptyState } from "@/components/EmptyState";
+
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, "");
+const SERVICES_API_BASE = `${SUPABASE_URL}/functions/v1/services-api`;
 
 const TEST_ACTIONS: { action: WebhookAction; label: string; desc: string; testPayload: Record<string, unknown> }[] = [
   {
@@ -42,10 +45,21 @@ export function Settings() {
   const [tab, setTab] = useState<"webhooks" | "clinic" | "logs">("webhooks");
   const [testingAction, setTestingAction] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, { ok: boolean; message: string }>>({});
+  const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
     load();
   }, []);
+
+  async function copyToClipboard(text: string, id: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(id);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      setCopied(null);
+    }
+  }
 
   async function load() {
     const { data } = await supabase.from("settings").select("*");
@@ -181,6 +195,83 @@ export function Settings() {
             <button onClick={save} disabled={saving} className="btn-primary">
               <Save size={16} /> {saving ? "جارٍ الحفظ..." : "حفظ"}
             </button>
+          </div>
+
+          <div className="mt-6 pt-5 border-t border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <Table size={16} className="text-teal-600" />
+              <h3 className="font-semibold text-slate-700 text-sm">روابط الـ API — لسحب الخدمات إلى n8n</h3>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">
+              استخدم أي رابط من اللي تحت في n8n لسحب الخدمات على شكل جدول. الطلبات لازم تحتوي ترويسة
+              <code className="text-violet-600 mx-1">Authorization: Bearer &lt;المفتاح&gt;</code>
+              بنفس المفتاح اللي فوق.
+            </p>
+
+            <div className="space-y-2.5">
+              {[
+                {
+                  id: "csv",
+                  icon: <FileSpreadsheet size={14} />,
+                  label: "CSV (جدول مثل جوجل شيت — يُنزّل ملف)",
+                  url: `${SERVICES_API_BASE}?format=csv`,
+                  hint: "ينزّل ملف CSV جاهز لإكسل/جوجل شيت",
+                },
+                {
+                  id: "table",
+                  icon: <Table size={14} />,
+                  label: "Table (JSON بأعمدة وصفوف)",
+                  url: `${SERVICES_API_BASE}?format=table`,
+                  hint: "مناسب لعقدة HTTP في n8n",
+                },
+                {
+                  id: "json",
+                  icon: <Bot size={14} />,
+                  label: "JSON (افتراضي)",
+                  url: `${SERVICES_API_BASE}`,
+                  hint: "كل الخدمات كمصفوفة services",
+                },
+              ].map((item) => (
+                <div
+                  key={item.id}
+                  className="p-3 rounded-xl border border-slate-200 bg-slate-50/50"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                      <span className="text-teal-600">{item.icon}</span>
+                      {item.label}
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(item.url, item.id)}
+                      className="btn-ghost text-xs py-1 px-2"
+                    >
+                      {copied === item.id ? (
+                        <CheckCircle2 size={14} className="text-emerald-600" />
+                      ) : (
+                        <Copy size={14} />
+                      )}
+                      {copied === item.id ? "تم النسخ" : "نسخ الرابط"}
+                    </button>
+                  </div>
+                  <code
+                    className="block text-xs text-slate-600 bg-white rounded-lg p-2 break-all dir-ltr"
+                    dir="ltr"
+                  >
+                    {item.url}
+                  </code>
+                  <p className="text-xs text-slate-400 mt-1">{item.hint}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 p-3 bg-teal-50 rounded-xl text-xs text-slate-600">
+              <p className="font-semibold text-teal-700 mb-1">مثال سريع في n8n:</p>
+              <code className="block bg-white rounded-lg p-2 mt-1 dir-ltr" dir="ltr">
+                GET {SERVICES_API_BASE}?format=csv
+                <br />
+                Header: Authorization: Bearer &lt;المفتاح&gt;
+              </code>
+            </div>
           </div>
 
           <div className="mt-6 pt-5 border-t border-slate-100">
