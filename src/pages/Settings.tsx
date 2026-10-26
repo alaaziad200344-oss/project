@@ -475,27 +475,27 @@ export function Settings() {
             </div>
 
             <div className="mt-3 p-3 bg-amber-50 rounded-xl text-xs text-slate-600">
-              <p className="font-semibold text-amber-700 mb-1">إجابة الـ API (reminders):</p>
+              <p className="font-semibold text-amber-700 mb-1">إجابة الـ API (JSON Array — كل موعد صف لوحده):</p>
               <code className="block bg-white rounded-lg p-2 mt-1 dir-ltr" dir="ltr">
-{`{
-  "ok": true,
-  "range": { "from": "...", "to": "..." },
-  "count": 5,
-  "reminders": [
-    {
-      "appointment_id": "uuid",
-      "patient_name": "محمد أحمد",
-      "patient_phone": "0501234567",
-      "appointment_date_ar": "الأحد، ٢ أكتوبر ٢٠٢٦",
-      "appointment_time": "١٠:٠٠ ص",
-      "doctor_name": "د. أحمد العلي",
-      "reminder_message": "مرحباً محمد أحمد، نذكّرك بموعدك..."
-    }
-  ]
-}`}
+{`[
+  {
+    "appointment_id": "uuid",
+    "patient_name": "محمد أحمد",
+    "patient_phone": "0501234567",
+    "appointment_date_ar": "الأحد، ٢٧ أكتوبر ٢٠٢٦",
+    "appointment_time": "١٠:٠٠ ص",
+    "doctor_name": "د. أحمد العلي",
+    "reminder_message": "مرحباً محمد أحمد، نذكّرك بموعدك..."
+  },
+  {
+    "appointment_id": "uuid2",
+    "patient_name": "سارة علي",
+    ...
+  }
+]`}
               </code>
               <p className="text-xs text-slate-500 mt-2">
-                حقل <code>reminder_message</code> جاهز للإرسال مباشرة على واتساب/سمس. لو مفيش رقم تليفون للمريض بيكون <code>null</code>.
+                الـ API بيرجّع <strong>JSON Array مباشر</strong> زي بتاع الخدمات بالظبط — كل موعد صف في الجدول لوحده، جاهز لـ n8n. حقل <code>reminder_message</code> جاهز للإرسال على واتساب/سمس.
               </p>
             </div>
           </div>
