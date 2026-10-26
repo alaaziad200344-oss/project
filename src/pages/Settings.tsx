@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Save, Bot, Webhook, Building2, History, Eye, EyeOff, Send, CheckCircle2, AlertCircle, Loader2, KeyRound, Copy, Table, CalendarPlus, CalendarCheck } from "lucide-react";
+import { Save, Bot, Webhook, Building2, History, Eye, EyeOff, Send, CheckCircle2, AlertCircle, Loader2, KeyRound, Copy, Table, CalendarPlus, CalendarCheck, BellRing } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { Setting, AiLog } from "@/lib/types";
 import { formatDateTime } from "@/lib/format";
@@ -10,6 +10,7 @@ const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/
 const SERVICES_API_BASE = `${SUPABASE_URL}/functions/v1/services-api`;
 const BOOK_APPOINTMENT_URL = `${SUPABASE_URL}/functions/v1/book-appointment`;
 const CHECK_AVAILABILITY_URL = `${SUPABASE_URL}/functions/v1/check-availability`;
+const REMINDERS_URL = `${SUPABASE_URL}/functions/v1/appointment-reminders`;
 
 const TEST_ACTIONS: { action: WebhookAction; label: string; desc: string; testPayload: Record<string, unknown> }[] = [
   {
@@ -404,6 +405,98 @@ export function Settings() {
   "doctors": [{"id":"...","name":"د. أحمد العلي","specialty":"تقويم"}]
 }`}
               </code>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-5 border-t border-slate-100">
+            <div className="flex items-center gap-2 mb-3">
+              <BellRing size={16} className="text-amber-600" />
+              <h3 className="font-semibold text-slate-700 text-sm">تذكير المرضى بالمواعيد الجاية — API</h3>
+            </div>
+            <p className="text-xs text-slate-500 mb-3">
+              GET بيرجّع المواعيد الجاية مع اسم المريض ورقمه ورسالة تذكير جاهزة تبعتها على واتساب/سمس.
+            </p>
+
+            <div className="space-y-2.5">
+              {[
+                {
+                  id: "reminders-week",
+                  icon: <BellRing size={14} />,
+                  label: "مواعيد الأسبوع الجاي (افتراضي)",
+                  url: REMINDERS_URL,
+                  hint: "كل المواعيد من النهاردة لـ 7 أيام — مع رسالة تذكير جاهزة",
+                },
+                {
+                  id: "reminders-tomorrow",
+                  icon: <BellRing size={14} />,
+                  label: "مواعيد بكرة",
+                  url: `${REMINDERS_URL}?date=2026-10-27`,
+                  hint: "غيّر التاريخ YYYY-MM-DD",
+                },
+                {
+                  id: "reminders-3days",
+                  icon: <BellRing size={14} />,
+                  label: "أول 3 أيام",
+                  url: `${REMINDERS_URL}?days=3`,
+                  hint: "نافذة بعدد أيام مخصص",
+                },
+                {
+                  id: "reminders-unreminded",
+                  icon: <BellRing size={14} />,
+                  label: "مواعيد متذكّرش (للإرسال مرة واحدة)",
+                  url: `${REMINDERS_URL}?unreminded=true`,
+                  hint: "بيستثني المواعيد اللي اتبعتلها تذكير قبل كده",
+                },
+              ].map((item) => (
+                <div key={item.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50/50">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+                      <span className="text-amber-600">{item.icon}</span>
+                      {item.label}
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(item.url, item.id)}
+                      className="btn-ghost text-xs py-1 px-2"
+                    >
+                      {copied === item.id ? (
+                        <CheckCircle2 size={14} className="text-emerald-600" />
+                      ) : (
+                        <Copy size={14} />
+                      )}
+                      {copied === item.id ? "تم النسخ" : "نسخ الرابط"}
+                    </button>
+                  </div>
+                  <code className="block text-xs text-slate-600 bg-white rounded-lg p-2 break-all dir-ltr" dir="ltr">
+                    {item.url}
+                  </code>
+                  <p className="text-xs text-slate-400 mt-1">{item.hint}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 p-3 bg-amber-50 rounded-xl text-xs text-slate-600">
+              <p className="font-semibold text-amber-700 mb-1">إجابة الـ API (reminders):</p>
+              <code className="block bg-white rounded-lg p-2 mt-1 dir-ltr" dir="ltr">
+{`{
+  "ok": true,
+  "range": { "from": "...", "to": "..." },
+  "count": 5,
+  "reminders": [
+    {
+      "appointment_id": "uuid",
+      "patient_name": "محمد أحمد",
+      "patient_phone": "0501234567",
+      "appointment_date_ar": "الأحد، ٢ أكتوبر ٢٠٢٦",
+      "appointment_time": "١٠:٠٠ ص",
+      "doctor_name": "د. أحمد العلي",
+      "reminder_message": "مرحباً محمد أحمد، نذكّرك بموعدك..."
+    }
+  ]
+}`}
+              </code>
+              <p className="text-xs text-slate-500 mt-2">
+                حقل <code>reminder_message</code> جاهز للإرسال مباشرة على واتساب/سمس. لو مفيش رقم تليفون للمريض بيكون <code>null</code>.
+              </p>
             </div>
           </div>
 
